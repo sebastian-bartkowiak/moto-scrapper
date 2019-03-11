@@ -211,6 +211,95 @@ async function getAllOTOMOTOAds(): Promise<{ads: Array<AdPrototype>, time: numbe
     }
 }
 
+// -v- ALLEGRO -v-
+async function queryALLEGRO(pageNumber: number = 1): Promise<any> {
+    const ALLEGRO_QUERY_URL: string = "https://allegro.pl/kategoria/motoryzacja-motocykle-i-quady-5557";
+    const ALLEGRO_QUERY_HEADERS = {
+        "User-Agent":   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36",
+        "Cookie":       "PHPSESSID=q6ftqpkahsj512l9vprtje2c83; mobile_default=desktop; rtbhouse-split=3; ldTd=true; laquesis_ff=; xtvrn=$remove$; __gfp_64b=-TURNEDOFF; cookieBarSeen=true; layerappsSeen=1; ak_bmsc=65A61B078F53DCCA4FBB14DABE52E808685E6495396C00005E3E865C74ED8B49~plos/ZyypbkGgHiyKyGQiTGkld+qCgTuJBmfik8Xz+5UizKrNcwl/ZTJoTFJYZ6SeqnQ+011hxr5Joco4h5CK3pjWqmVQYvkj/CX3pJcrkM3qUcxYr/aRK+ZcAtIr70/JxN46xKYJ3W/5uQG7TadLp66SZ4yHL1zwTLiDMsrbb70EHAsEt7zVUwGbdGpOBqXCkHCXVTgS5mfmIIAYnqd47htGYl4e966j2XmRgb3Kaits=; laquesis=cars-11021@b#cars-9383@a#cars-9384@a#cars-9982@a; lqstatus=1552302863|1696c63a37ax2b07bca1|cars-9383#cars-9384|; last_locations=13983-0-0-Pozna%C5%84-Wielkopolskie-poznan; my_city_2=13983_0_200_Pozna%C5%84_0_Wielkopolskie_poznan; bm_sv=9680DA20343C03AABC814518DA7AD38C~kAq+xll1obone9GJ3KfWjYBXIArCf7etxhe3m3ozxK/3NMV7W+JgNa5amdMH4oQ2MqtdL3P+IIF6hcirQhE4jsKhaPwk1E6R9zfwvvyLjJg7yvKNITj2RbfbE3KYxCe97ibN+lq3Uh/ZpTo++7YFGJgXZ4/CUxZxEwGN9xplu4s=; onap=16957b4b385x30c85c88-3-1696c63a37ax2b07bca1-6-1552303654",
+        "Accept":       "application/vnd.opbox-web.v2+json"
+    };
+    const queryString = <any>{
+        "price_to": 12000,
+        "uszkodzony": "Nie",
+        "order": "p",
+        "pojemnosc-silnika-od": 400,
+        "state": 15
+    };
+    if (pageNumber > 1) {
+        queryString.p = pageNumber;
+    }
+    return JSON.parse(await request({
+        uri: ALLEGRO_QUERY_URL,
+        method: "GET",
+        qs: queryString,
+        headers: ALLEGRO_QUERY_HEADERS
+    }));
+}
+
+async function getALLEGROads(pageNumber: number = 1): Promise<Array<AdPrototype>> {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const data = await queryALLEGRO(pageNumber);
+            const ret: Array<AdPrototype> = [];
+            let entries_to_process: Array<any> = [];
+            entries_to_process = entries_to_process.concat(data.dataSources["listing-api-v3:allegro.listing:3.0"].data.items.promoted);
+            entries_to_process = entries_to_process.concat(data.dataSources["listing-api-v3:allegro.listing:3.0"].data.items.regular);
+            entries_to_process.forEach((item) => {
+                const thisPic: Array<string> = [];
+                item.images.forEach((img_url: {url: string}) => {
+                    thisPic.push(img_url.url);
+                });
+                ret.push(new AdPrototype(
+                    item.name,
+                    item.location.city,
+                    "ALLEGRO",
+                    item.url,
+                    "ALLEGRO_" + item.id,
+                    parseFloat(item.sellingMode.advertisement.price.amount),
+                    thisPic
+                ));
+            });
+            resolve(ret);
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+
+async function getALLEGROPages(): Promise<Array<number>> {
+    const data = await queryALLEGRO();
+    const totalPages = Math.ceil(data.dataSources["listing-api-v3:allegro.listing:3.0"].metadata.Pageable.totalCount / data.dataSources["listing-api-v3:allegro.listing:3.0"].metadata.Pageable.pageSize);
+    const ret = [];
+    for (let i = 1; i <= totalPages; i++) {
+        ret.push(i);
+    }
+    return ret;
+}
+
+async function getAllALLEGROAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
+    const ALLEGROstartTimestamp = new Date().getTime();
+    const pagesArray = await getALLEGROPages();
+    if (pagesArray.length) {
+        const single_results = await Promise.all(pagesArray.map((pageNo) => getALLEGROads(pageNo)));
+        let merged_results: Array<AdPrototype> = [];
+        for (const i in single_results) {
+            merged_results = merged_results.concat(single_results[i]);
+        }
+        const no_before_merge = merged_results.length;
+        merged_results = merged_results.filter((obj, pos, arr) => arr.map(innerObj => innerObj.Source.uniqueId).indexOf(obj.Source.uniqueId) === pos);
+        if (merged_results.length != no_before_merge) {
+            console.warn("Removed " + (no_before_merge - merged_results.length) + " duplicates scrapped from ALLEGRO!");
+        }
+        return {ads: merged_results, time: (new Date().getTime() - ALLEGROstartTimestamp)};
+    }
+    else {
+        console.warn("No pages to scrap found on ALLEGRO!");
+        throw new Error("ALLEGRO ERROR!");
+    }
+}
+
 async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, changed: number, unchanged: number, time: number}> {
     const DBstartTimestamp = new Date().getTime();
     let merged_ads: Array<AdPrototype> = [];
