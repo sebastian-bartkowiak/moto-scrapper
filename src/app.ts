@@ -22,7 +22,7 @@ const sequelize =  new Sequelize({
     dialect: "mysql",
     username: "motoscrapper",
     password: Secrets.DATABASE_PASS,
-    host: "localhost",
+    host: "10.100.10.40",
     logging: false,
     modelPaths: [__dirname + "/models"]
 });
@@ -43,7 +43,7 @@ const request = async function (options: request_callback.Options): Promise<stri
         });
     });
 };
-
+// -v- OLX -v-
 function queryOLX(pageNumber: number = 0): Promise<string> {
     const OLX_QUERY_URL: string = "https://www.olx.pl/ajax/search/list/";
     const OLX_QUERY_HEADERS = {
@@ -109,7 +109,8 @@ async function getOLXPages(): Promise<Array<number>> {
     return ret;
 }
 
-async function getAllOLXAds(): Promise<Array<AdPrototype>> {
+async function getAllOLXAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
+    const OLXstartTimestamp = new Date().getTime();
     const pagesArray = await getOLXPages();
     if (pagesArray.length) {
         const single_results = await Promise.all(pagesArray.map((pageNo) => getOLXads(pageNo)));
@@ -118,15 +119,100 @@ async function getAllOLXAds(): Promise<Array<AdPrototype>> {
             merged_results = merged_results.concat(single_results[i]);
         }
         merged_results = merged_results.filter((obj, pos, arr) => arr.map(innerObj => innerObj.Source.uniqueId).indexOf(obj.Source.uniqueId) === pos);
-        return merged_results;
+        return {ads: merged_results, time: (new Date().getTime() - OLXstartTimestamp)};
     }
     else {
         console.warn("No pages to scrap found on OLX!");
         throw new Error("OLX ERROR!");
     }
 }
+// -v- OTOMOTO -v-
+function queryOTOMOTO(pageNumber: number = 1): Promise<string> {
+    const OTOMOTO_QUERY_URL: string = "https://www.otomoto.pl/motocykle-i-quady/poznan/";
+    const OTOMOTO_QUERY_HEADERS = {
+        "User-Agent":   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36",
+        "Cookie":       "PHPSESSID=q6ftqpkahsj512l9vprtje2c83; mobile_default=desktop; rtbhouse-split=3; ldTd=true; laquesis_ff=; xtvrn=$remove$; __gfp_64b=-TURNEDOFF; cookieBarSeen=true; layerappsSeen=1; ak_bmsc=65A61B078F53DCCA4FBB14DABE52E808685E6495396C00005E3E865C74ED8B49~plos/ZyypbkGgHiyKyGQiTGkld+qCgTuJBmfik8Xz+5UizKrNcwl/ZTJoTFJYZ6SeqnQ+011hxr5Joco4h5CK3pjWqmVQYvkj/CX3pJcrkM3qUcxYr/aRK+ZcAtIr70/JxN46xKYJ3W/5uQG7TadLp66SZ4yHL1zwTLiDMsrbb70EHAsEt7zVUwGbdGpOBqXCkHCXVTgS5mfmIIAYnqd47htGYl4e966j2XmRgb3Kaits=; laquesis=cars-11021@b#cars-9383@a#cars-9384@a#cars-9982@a; lqstatus=1552302863|1696c63a37ax2b07bca1|cars-9383#cars-9384|; last_locations=13983-0-0-Pozna%C5%84-Wielkopolskie-poznan; my_city_2=13983_0_200_Pozna%C5%84_0_Wielkopolskie_poznan; bm_sv=9680DA20343C03AABC814518DA7AD38C~kAq+xll1obone9GJ3KfWjYBXIArCf7etxhe3m3ozxK/3NMV7W+JgNa5amdMH4oQ2MqtdL3P+IIF6hcirQhE4jsKhaPwk1E6R9zfwvvyLjJg7yvKNITj2RbfbE3KYxCe97ibN+lq3Uh/ZpTo++7YFGJgXZ4/CUxZxEwGN9xplu4s=; onap=16957b4b385x30c85c88-3-1696c63a37ax2b07bca1-6-1552303654"
+    };
+    const queryString = <any>{
+        "search[filter_float_price:to]": 12000,
+        "search[filter_float_engine_capacity:from]": 400,
+        "search[filter_enum_damaged]": 0,
+        "search[order]": "filter_float_price:asc",
+        "search[dist]": 200,
+        "search[country]": ""
+    };
+    if (pageNumber > 1) {
+        queryString.page = pageNumber;
+    }
+    return request({
+        uri: OTOMOTO_QUERY_URL,
+        method: "GET",
+        qs: queryString,
+        headers: OTOMOTO_QUERY_HEADERS
+    });
+}
 
-async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, changed: number, unchanged: number}> {
+async function getOTOMOTOads(pageNumber: number = 1): Promise<Array<AdPrototype>> {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const $ = cheerio.load(await queryOTOMOTO(pageNumber));
+            const ret: Array<AdPrototype> = [];
+            $("article").each(async (i, e) => {
+                const entry = $(e);
+                const thisPic = entry.find(".offer-item__photo-link img").attr("data-src");
+                ret.push(new AdPrototype(
+                    entry.find(".offer-title").text().trim() + " " + entry.find(".offer-item__subtitle").text().trim(),
+                    entry.find(".offer-item__location").text().trim().replace(/\s+/, " "),
+                    "OTOMOTO",
+                    entry.find("a.offer-title__link").attr("href"),
+                    "OTOMOTO_" + entry.find("a.offer-title__link").attr("data-ad-id"),
+                    parseFloat(entry.find(".offer-price__number").contents().not(entry.find(".offer-price__number").children()).text().trim().replace(/\s/, "")),
+                    (typeof thisPic !== "undefined" ? [thisPic.replace(/;s=\d+x\d+/, "")] : [])
+                ));
+            });
+            resolve(ret);
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+
+async function getOTOMOTOPages(): Promise<Array<number>> {
+    const html = await queryOTOMOTO();
+    const $ = cheerio.load(html);
+    const totalPages = parseInt($("ul.om-pager.rel").find("li").last().prev().find("span").text());
+    const ret = [];
+    for (let i = 1; i <= totalPages; i++) {
+        ret.push(i);
+    }
+    return ret;
+}
+
+async function getAllOTOMOTOAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
+    const OTOMOTOstartTimestamp = new Date().getTime();
+    const pagesArray = await getOTOMOTOPages();
+    if (pagesArray.length) {
+        const single_results = await Promise.all(pagesArray.map((pageNo) => getOTOMOTOads(pageNo)));
+        let merged_results: Array<AdPrototype> = [];
+        for (const i in single_results) {
+            merged_results = merged_results.concat(single_results[i]);
+        }
+        const no_before_merge = merged_results.length;
+        merged_results = merged_results.filter((obj, pos, arr) => arr.map(innerObj => innerObj.Source.uniqueId).indexOf(obj.Source.uniqueId) === pos);
+        if (merged_results.length != no_before_merge) {
+            console.warn("Removed " + (no_before_merge - merged_results.length) + " duplicates scrapped from OTOMOTO!");
+        }
+        return {ads: merged_results, time: (new Date().getTime() - OTOMOTOstartTimestamp)};
+    }
+    else {
+        console.warn("No pages to scrap found on OTOMOTO!");
+        throw new Error("OTOMOTO ERROR!");
+    }
+}
+
+async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, changed: number, unchanged: number, time: number}> {
+    const DBstartTimestamp = new Date().getTime();
     let merged_ads: Array<AdPrototype> = [];
     for (const i in ads) {
         merged_ads = merged_ads.concat(ads[i]);
@@ -213,7 +299,8 @@ async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, ch
     const total = {
         new: 0,
         changed: 0,
-        unchanged: 0
+        unchanged: 0,
+        time: -1
     };
     const results = await Promise.all(promises);
     for (let i = 0; i < results.length; i++) {
@@ -221,14 +308,15 @@ async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, ch
         total.changed +=    results[i].changed;
         total.unchanged +=  results[i].unchanged;
     }
+    total.time = new Date().getTime() - DBstartTimestamp;
     return total;
 }
 
 app.get("/", async (req, res) => {
     try {
-        const ret = await getAllOLXAds();
-        const result = await saveAds([ret]);
-        res.send(result);
+        const OLX = await getAllOTOMOTOAds();
+        const result = await saveAds([OLX.ads]);
+        res.send({DB: result, times: { OLX: OLX.time }});
     }
     catch (error) {
         console.error(error);
