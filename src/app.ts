@@ -304,17 +304,13 @@ async function getAllALLEGROAds(): Promise<{ads: Array<AdPrototype>, time: numbe
     }
 }
 
-async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, changed: number, unchanged: number, time: number}> {
+async function saveAds(ads: Array<AdPrototype>): Promise<{new: number, changed: number, unchanged: number, time: number}> {
     const DBstartTimestamp = new Date().getTime();
-    let merged_ads: Array<AdPrototype> = [];
-    for (const i in ads) {
-        merged_ads = merged_ads.concat(ads[i]);
-    }
     const promises: Array<Promise<{new: number, changed: number, unchanged: number}>> = [];
     const now = new Date();
-    for (const i in merged_ads) {
+    for (const i in ads) {
         promises.push(new Promise(async(resolve, reject) => {
-            const thisAdPrototype = merged_ads[i];
+            const thisAdPrototype = ads[i];
             const prevSource = await Source.findOne({
                 where: {
                     uniqueId: thisAdPrototype.Source.uniqueId
@@ -405,11 +401,27 @@ async function saveAds(ads: Array<Array<AdPrototype>>): Promise<{new: number, ch
     return total;
 }
 
-app.get("/", async (req, res) => {
+async function getAllAds(): Promise<{ads: Array<AdPrototype>, time: {OLX: number, OTOMOTO: number, ALLEGRO: number}}> {
+    const scrapped_ads = await Promise.all([
+        getAllOLXAds(),
+        getAllOTOMOTOAds(),
+        getAllALLEGROAds()
+    ]);
+    return {
+        ads: scrapped_ads[0].ads.concat(scrapped_ads[1].ads.concat(scrapped_ads[2].ads)),
+        time: {
+            OLX:        scrapped_ads[0].time,
+            OTOMOTO:    scrapped_ads[1].time,
+            ALLEGRO:    scrapped_ads[2].time
+        }
+    };
+}
+
+app.get("/scrap", async (req, res) => {
     try {
-        const OLX = await getAllOTOMOTOAds();
-        const result = await saveAds([OLX.ads]);
-        res.send({DB: result, times: { OLX: OLX.time }});
+        const ads = await getAllAds();
+        const result = await saveAds(ads.ads);
+        res.send({DB: result, time: ads.time });
     }
     catch (error) {
         console.error(error);
