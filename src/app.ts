@@ -118,7 +118,11 @@ async function getAllOLXAds(): Promise<{ads: Array<AdPrototype>, time: number}> 
         for (const i in single_results) {
             merged_results = merged_results.concat(single_results[i]);
         }
+        const no_before_merge = merged_results.length;
         merged_results = merged_results.filter((obj, pos, arr) => arr.map(innerObj => innerObj.Source.uniqueId).indexOf(obj.Source.uniqueId) === pos);
+        if (merged_results.length != no_before_merge) {
+            console.warn("Removed " + (no_before_merge - merged_results.length) + " duplicates scrapped from OLX!");
+        }
         return {ads: merged_results, time: (new Date().getTime() - OLXstartTimestamp)};
     }
     else {
