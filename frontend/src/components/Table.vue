@@ -17,7 +17,7 @@
             <tbody>
                 <tr v-for="ad in currentData" :key="ad.id">
                     <td>{{ ad.id }}</td>
-                    <td><a :href="ad.sources[0].url">{{ ad.title }}</a></td>
+                    <td><Pictures :picArray="ad.pictures"/><a :href="ad.sources[0].url">{{ ad.title }}</a></td>
                     <td>{{ ad.locationName }}</td>
                     <td>4</td>
                 </tr>
@@ -27,9 +27,13 @@
 </template>
 <script>
 import axios from 'axios';
+import Pictures from './Pictures.vue'
 
 export default {
     name: 'Table',
+    components: {
+        Pictures
+    },
     methods:{
         async updateData(){
             let ads = await axios.get("http://localhost:8080/ads", {
@@ -117,3 +121,10 @@ export default {
     }
 }
 </script>
+<style>
+img.table-img {
+    max-width: 200px;
+    max-height: 100px;
+    object-fit: contain;
+}
+</style>
