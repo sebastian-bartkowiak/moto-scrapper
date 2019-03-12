@@ -1,10 +1,9 @@
 <template>
     <div>
         <ul class="paginator">
-            <li :class="{disabled:isFirst}" v-on:click="!isFirst?(offset = 0):null">Pierwsza</li>
             <li :class="{disabled:isFirst}" v-on:click="!isFirst?(offset -= pageSize):null">Poprzednia</li>
+            <li v-for="page in paginationPages" :key="page" :class="{current:((page-1)*pageSize)==offset, dots:typeof page ==='undefined'}" v-on:click="offset = (page-1)*pageSize">{{ page }}</li>
             <li :class="{disabled:isLast}" v-on:click="!isLast?(offset += pageSize):null">Następna</li>
-            <li :class="{disabled:isLast}" v-on:click="!isLast?(offset = Math.floor(dataCount/pageSize)*pageSize):null">Ostatnia</li>
         </ul>
         <table>
             <thead>
@@ -53,7 +52,7 @@ export default {
             this.sort.dir = 'ASC';
         }
     },
-    mounted(){
+    created(){
         this.updateData();
     },
     watch:{
@@ -73,13 +72,42 @@ export default {
         },
         isLast(){
             return (this.offset + this.pageSize) >= this.dataCount;
+        },
+        paginationPages(){
+            const currentPage = Math.floor(this.offset/this.pageSize)+1;
+            const lastPage = Math.ceil(this.dataCount/this.pageSize);
+            const delta = 2;
+            const left = currentPage - delta;
+            const right = currentPage + delta + 1;
+            const range = [];
+            const rangeWithDots = [];
+            var l;
+
+            for (let i = 1; i <= lastPage; i++) {
+                if (i == 1 || i == lastPage || i >= left && i < right) {
+                    range.push(i);
+                }
+            }
+
+            for (let i of range) {
+                if (l) {
+                    if (i - l === 2) {
+                        rangeWithDots.push(l + 1);
+                    } else if (i - l !== 1) {
+                        rangeWithDots.push(undefined);
+                    }
+                }
+                rangeWithDots.push(i);
+                l = i;
+            }
+            return rangeWithDots;
         }
     },
     data(){
         return {
             pageSize:       50,
             offset:         0,
-            currentData:    [4,2,3],
+            currentData:    [],
             dataCount:      0,
             sort:{
                 col: "id",
