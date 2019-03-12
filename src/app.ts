@@ -300,6 +300,86 @@ async function getAllALLEGROAds(): Promise<{ads: Array<AdPrototype>, time: numbe
     }
 }
 
+// -v- SPRZEDAJEMY -v-
+function querySPRZEDAJEMY(pageNumber: number = 1): Promise<any> {
+    const SPRZEDAJEMY_QUERY_URL: string = "https://sprzedajemy.pl/wielkopolskie/motoryzacja/motocykle-skutery-quady";
+    const SPRZEDAJEMY_QUERY_HEADERS = {
+        "User-Agent":   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36",
+        "Cookie":       "PHPSESSID=q6ftqpkahsj512l9vprtje2c83; mobile_default=desktop; rtbhouse-split=3; ldTd=true; laquesis_ff=; xtvrn=$remove$; __gfp_64b=-TURNEDOFF; cookieBarSeen=true; layerappsSeen=1; ak_bmsc=65A61B078F53DCCA4FBB14DABE52E808685E6495396C00005E3E865C74ED8B49~plos/ZyypbkGgHiyKyGQiTGkld+qCgTuJBmfik8Xz+5UizKrNcwl/ZTJoTFJYZ6SeqnQ+011hxr5Joco4h5CK3pjWqmVQYvkj/CX3pJcrkM3qUcxYr/aRK+ZcAtIr70/JxN46xKYJ3W/5uQG7TadLp66SZ4yHL1zwTLiDMsrbb70EHAsEt7zVUwGbdGpOBqXCkHCXVTgS5mfmIIAYnqd47htGYl4e966j2XmRgb3Kaits=; laquesis=cars-11021@b#cars-9383@a#cars-9384@a#cars-9982@a; lqstatus=1552302863|1696c63a37ax2b07bca1|cars-9383#cars-9384|; last_locations=13983-0-0-Pozna%C5%84-Wielkopolskie-poznan; my_city_2=13983_0_200_Pozna%C5%84_0_Wielkopolskie_poznan; bm_sv=9680DA20343C03AABC814518DA7AD38C~kAq+xll1obone9GJ3KfWjYBXIArCf7etxhe3m3ozxK/3NMV7W+JgNa5amdMH4oQ2MqtdL3P+IIF6hcirQhE4jsKhaPwk1E6R9zfwvvyLjJg7yvKNITj2RbfbE3KYxCe97ibN+lq3Uh/ZpTo++7YFGJgXZ4/CUxZxEwGN9xplu4s=; onap=16957b4b385x30c85c88-3-1696c63a37ax2b07bca1-6-1552303654"
+    };
+    return request({
+        uri: SPRZEDAJEMY_QUERY_URL,
+        method: "GET",
+        qs: {
+            "inp_price[to]":            12000,
+            "inp_only_with_photos":     1,
+            "inp_condition_id":         0,
+            "inp_attribute_90[from]":   400,
+            "inp_attribute_225":        1130,
+            "sort":                     "inp_srt_price_a",
+            "items_per_page":           60,
+            "offset":                   (pageNumber - 1) * 60
+        },
+        headers: SPRZEDAJEMY_QUERY_HEADERS
+    });
+}
+
+async function getSPRZEDAJEMYads(pageNumber: number = 1): Promise<Array<AdPrototype>> {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const $ = cheerio.load(await querySPRZEDAJEMY(pageNumber));
+            const ret: Array<AdPrototype> = [];
+            $("article ul").each(async (i, e) => {
+                const entry = $(e);
+                const url = "https://sprzedajemy.pl" + entry.find("h2.title a.offerLink").attr("href");
+                const thisPic = entry.find("li.photo img").attr("src");
+                ret.push(new AdPrototype(
+                    entry.find("h2.title a.offerLink").text().trim(),
+                    entry.find(".city").text(),
+                    "SPRZEDAJEMY",
+                    url,
+                    "SPRZEDAJEMY_" + url.substring(url.lastIndexOf("-nr") + 3),
+                    parseFloat(entry.find(".price").text().replace("zł", "").replace(/\s/g, "")),
+                    (typeof thisPic !== "undefined" ? [thisPic.replace("350x250c", "1000x901c")] : [])
+                ));
+            });
+            resolve(ret);
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+
+async function getSPRZEDAJEMYPages(): Promise<Array<number>> {
+    const html = await querySPRZEDAJEMY();
+    const $ = cheerio.load(html);
+    const totalPages = parseInt($("ul.cntPaginator li").last().prev().text());
+    return pagesArray(totalPages);
+}
+
+async function getAllSPRZEDAJEMYAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
+    const SPRZEDAJEMYstartTimestamp = new Date().getTime();
+    const pagesArray = await getSPRZEDAJEMYPages();
+    if (pagesArray.length) {
+        const single_results = await Promise.all(pagesArray.map((pageNo) => getSPRZEDAJEMYads(pageNo)));
+        let merged_results: Array<AdPrototype> = [];
+        for (const i in single_results) {
+            merged_results = merged_results.concat(single_results[i]);
+        }
+        const no_before_merge = merged_results.length;
+        merged_results = merged_results.filter((obj, pos, arr) => arr.map(innerObj => innerObj.Source.uniqueId).indexOf(obj.Source.uniqueId) === pos);
+        if (merged_results.length != no_before_merge) {
+            console.warn("Removed " + (no_before_merge - merged_results.length) + " duplicates scrapped from SPRZEDAJEMY!");
+        }
+        return {ads: merged_results, time: (new Date().getTime() - SPRZEDAJEMYstartTimestamp)};
+    }
+    else {
+        console.warn("No pages to scrap found on SPRZEDAJEMY!");
+        throw new Error("SPRZEDAJEMY ERROR!");
+    }
+}
+
 async function saveAds(ads: Array<AdPrototype>): Promise<{new: number, changed: number, unchanged: number, time: number}> {
     const DBstartTimestamp = new Date().getTime();
     const promises: Array<Promise<{new: number, changed: number, unchanged: number}>> = [];
