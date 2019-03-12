@@ -514,6 +514,9 @@ app.get("/scrap", async (req, res) => {
 });
 
 app.get("/ads", async (req, res) => {
+    const order = typeof req.query.order_col === "string" && typeof req.query.order_dir === "string" ? [[req.query.order_col, req.query.order_dir]] : [["id", "ASC"]];
+    const limit: number = typeof req.query.pageSize === "string" ? parseInt(req.query.pageSize) : 50;
+    const offset: number = typeof req.query.offset === "string" ? parseInt(req.query.offset) : 0;
     const ads = await Ad.findAll({
         include: [{
             model: Picture,
@@ -533,9 +536,13 @@ app.get("/ads", async (req, res) => {
         }],
         attributes: {
             exclude: ["location_lat", "location_lng"]
-        }
+        },
+        order: order,
+        limit: limit,
+        offset: offset
     });
-    res.send(ads);
+    const ads_count = await Ad.count();
+    res.send({data: ads, count: ads_count});
 });
 
 export default app;
