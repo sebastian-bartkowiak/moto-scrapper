@@ -43,6 +43,14 @@ const request = async function (options: request_callback.Options): Promise<stri
         });
     });
 };
+
+const pagesArray = function (pagesCount: number): Array<number> {
+    const ret = [];
+    for (let i = 1; i <= pagesCount; i++) {
+        ret.push(i);
+    }
+    return ret;
+};
 // -v- OLX -v-
 function queryOLX(pageNumber: number = 0): Promise<string> {
     const OLX_QUERY_URL: string = "https://www.olx.pl/ajax/search/list/";
@@ -102,11 +110,7 @@ async function getOLXPages(): Promise<Array<number>> {
     const html = await queryOLX();
     const $ = cheerio.load(html);
     const totalPages = parseInt($("a[data-cy=\"page-link-last\"]").text());
-    const ret = [];
-    for (let i = 1; i <= totalPages; i++) {
-        ret.push(i);
-    }
-    return ret;
+    return pagesArray(totalPages);
 }
 
 async function getAllOLXAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
@@ -186,11 +190,7 @@ async function getOTOMOTOPages(): Promise<Array<number>> {
     const html = await queryOTOMOTO();
     const $ = cheerio.load(html);
     const totalPages = parseInt($("ul.om-pager.rel").find("li").last().prev().find("span").text());
-    const ret = [];
-    for (let i = 1; i <= totalPages; i++) {
-        ret.push(i);
-    }
-    return ret;
+    return pagesArray(totalPages);
 }
 
 async function getAllOTOMOTOAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
@@ -275,11 +275,7 @@ async function getALLEGROads(pageNumber: number = 1): Promise<Array<AdPrototype>
 async function getALLEGROPages(): Promise<Array<number>> {
     const data = await queryALLEGRO();
     const totalPages = Math.ceil(data.dataSources["listing-api-v3:allegro.listing:3.0"].metadata.Pageable.totalCount / data.dataSources["listing-api-v3:allegro.listing:3.0"].metadata.Pageable.pageSize);
-    const ret = [];
-    for (let i = 1; i <= totalPages; i++) {
-        ret.push(i);
-    }
-    return ret;
+    return pagesArray(totalPages);
 }
 
 async function getAllALLEGROAds(): Promise<{ads: Array<AdPrototype>, time: number}> {
