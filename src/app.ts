@@ -94,7 +94,7 @@ async function getOLXads(pageNumber: number = 0): Promise<Array<AdPrototype>> {
                     "OLX",
                     entry.find("a.link").attr("href"),
                     "OLX_" + entry.find("table").attr("data-id"),
-                    parseFloat(entry.find("p.price").text().replace("zł", "").replace(/ /g, "")),
+                    parseFloat(entry.find("p.price").text().replace("zł", "").replace(/\s/g, "")),
                     (typeof thisPic !== "undefined" ? [thisPic.replace(";s=261x203", "")] : [])
                 ));
             });
@@ -142,12 +142,12 @@ function queryOTOMOTO(pageNumber: number = 1): Promise<string> {
         "Cookie":       "PHPSESSID=q6ftqpkahsj512l9vprtje2c83; mobile_default=desktop; rtbhouse-split=3; ldTd=true; laquesis_ff=; xtvrn=$remove$; __gfp_64b=-TURNEDOFF; cookieBarSeen=true; layerappsSeen=1; ak_bmsc=65A61B078F53DCCA4FBB14DABE52E808685E6495396C00005E3E865C74ED8B49~plos/ZyypbkGgHiyKyGQiTGkld+qCgTuJBmfik8Xz+5UizKrNcwl/ZTJoTFJYZ6SeqnQ+011hxr5Joco4h5CK3pjWqmVQYvkj/CX3pJcrkM3qUcxYr/aRK+ZcAtIr70/JxN46xKYJ3W/5uQG7TadLp66SZ4yHL1zwTLiDMsrbb70EHAsEt7zVUwGbdGpOBqXCkHCXVTgS5mfmIIAYnqd47htGYl4e966j2XmRgb3Kaits=; laquesis=cars-11021@b#cars-9383@a#cars-9384@a#cars-9982@a; lqstatus=1552302863|1696c63a37ax2b07bca1|cars-9383#cars-9384|; last_locations=13983-0-0-Pozna%C5%84-Wielkopolskie-poznan; my_city_2=13983_0_200_Pozna%C5%84_0_Wielkopolskie_poznan; bm_sv=9680DA20343C03AABC814518DA7AD38C~kAq+xll1obone9GJ3KfWjYBXIArCf7etxhe3m3ozxK/3NMV7W+JgNa5amdMH4oQ2MqtdL3P+IIF6hcirQhE4jsKhaPwk1E6R9zfwvvyLjJg7yvKNITj2RbfbE3KYxCe97ibN+lq3Uh/ZpTo++7YFGJgXZ4/CUxZxEwGN9xplu4s=; onap=16957b4b385x30c85c88-3-1696c63a37ax2b07bca1-6-1552303654"
     };
     const queryString = <any>{
-        "search[filter_float_price:to]": 12000,
-        "search[filter_float_engine_capacity:from]": 400,
-        "search[filter_enum_damaged]": 0,
-        "search[order]": "filter_float_price:asc",
-        "search[dist]": 200,
-        "search[country]": ""
+        "search[filter_float_price:to]":                12000,
+        "search[filter_float_engine_capacity:from]":    400,
+        "search[filter_enum_damaged]":                  0,
+        "search[order]":                                "filter_float_price:asc",
+        "search[dist]":                                 200,
+        "search[country]":                              ""
     };
     if (pageNumber > 1) {
         queryString.page = pageNumber;
@@ -170,11 +170,11 @@ async function getOTOMOTOads(pageNumber: number = 1): Promise<Array<AdPrototype>
                 const thisPic = entry.find(".offer-item__photo-link img").attr("data-src");
                 ret.push(new AdPrototype(
                     entry.find(".offer-title").text().trim() + " " + entry.find(".offer-item__subtitle").text().trim(),
-                    entry.find(".offer-item__location").text().trim().replace(/\s+/, " "),
+                    entry.find(".offer-item__location").text().trim().replace(/\s+/g, " "),
                     "OTOMOTO",
                     entry.find("a.offer-title__link").attr("href"),
                     "OTOMOTO_" + entry.find("a.offer-title__link").attr("data-ad-id"),
-                    parseFloat(entry.find(".offer-price__number").contents().not(entry.find(".offer-price__number").children()).text().trim().replace(/\s/, "")),
+                    parseFloat(entry.find(".offer-price__number").contents().not(entry.find(".offer-price__number").children()).text().trim().replace(/\s/g, "")),
                     (typeof thisPic !== "undefined" ? [thisPic.replace(/;s=\d+x\d+/, "")] : [])
                 ));
             });
@@ -224,11 +224,11 @@ async function queryALLEGRO(pageNumber: number = 1): Promise<any> {
         "Accept":       "application/vnd.opbox-web.v2+json"
     };
     const queryString = <any>{
-        "price_to": 12000,
-        "uszkodzony": "Nie",
-        "order": "p",
+        "price_to":             12000,
+        "uszkodzony":           "Nie",
+        "order":                "p",
         "pojemnosc-silnika-od": 400,
-        "state": 15
+        "state":                15
     };
     if (pageNumber > 1) {
         queryString.p = pageNumber;
