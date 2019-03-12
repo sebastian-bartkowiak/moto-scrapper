@@ -477,18 +477,26 @@ async function saveAds(ads: Array<AdPrototype>): Promise<{new: number, changed: 
     return total;
 }
 
-async function getAllAds(): Promise<{ads: Array<AdPrototype>, time: {OLX: number, OTOMOTO: number, ALLEGRO: number}}> {
+async function getAllAds(): Promise<{ads: Array<AdPrototype>, count: {OLX: number, OTOMOTO: number, ALLEGRO: number, SPRZEDAJEMY: number}, time: {OLX: number, OTOMOTO: number, ALLEGRO: number, SPRZEDAJEMY: number}}> {
     const scrapped_ads = await Promise.all([
         getAllOLXAds(),
         getAllOTOMOTOAds(),
-        getAllALLEGROAds()
+        getAllALLEGROAds(),
+        getAllSPRZEDAJEMYAds()
     ]);
     return {
-        ads: scrapped_ads[0].ads.concat(scrapped_ads[1].ads.concat(scrapped_ads[2].ads)),
+        ads:                scrapped_ads[0].ads.concat(scrapped_ads[1].ads.concat(scrapped_ads[2].ads)),
+        count: {
+            OLX:            scrapped_ads[0].ads.length,
+            OTOMOTO:        scrapped_ads[1].ads.length,
+            ALLEGRO:        scrapped_ads[2].ads.length,
+            SPRZEDAJEMY:    scrapped_ads[3].ads.length
+        },
         time: {
-            OLX:        scrapped_ads[0].time,
-            OTOMOTO:    scrapped_ads[1].time,
-            ALLEGRO:    scrapped_ads[2].time
+            OLX:            scrapped_ads[0].time,
+            OTOMOTO:        scrapped_ads[1].time,
+            ALLEGRO:        scrapped_ads[2].time,
+            SPRZEDAJEMY:    scrapped_ads[3].time
         }
     };
 }
@@ -497,7 +505,7 @@ app.get("/scrap", async (req, res) => {
     try {
         const ads = await getAllAds();
         const result = await saveAds(ads.ads);
-        res.send({DB: result, time: ads.time });
+        res.send({DB: result, time: ads.time, count: ads.count});
     }
     catch (error) {
         console.error(error);
