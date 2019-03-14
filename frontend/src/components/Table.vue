@@ -1,9 +1,9 @@
 <template>
     <div>
         <ul class="paginator">
-            <li :class="{disabled:isFirst}" v-on:click="!isFirst?(offset -= pageSize):null">Poprzednia</li>
-            <li v-for="page in paginationPages" :key="page" :class="{current:((page-1)*pageSize)==offset, dots:typeof page ==='undefined'}" v-on:click="offset = (page-1)*pageSize">{{ page }}</li>
-            <li :class="{disabled:isLast}" v-on:click="!isLast?(offset += pageSize):null">Następna</li>
+            <li :class="{disabled:isFirst}" v-on:click="!isFirst?(offset -= pageSize):null"><i class="fa fa-chevron-left" aria-hidden="true"></i></li>
+            <li v-for="page in paginationPages" :key="page" :class="{current:((page-1)*pageSize)==offset, dots:typeof page ==='undefined'}" v-on:click="typeof page ==='undefined'?null:offset = (page-1)*pageSize"><i v-if="typeof page ==='undefined'" class="fa fa-ellipsis-h" aria-hidden="true"></i><span v-else>{{ page }}</span></li>
+            <li :class="{disabled:isLast}" v-on:click="!isLast?(offset += pageSize):null"><i class="fa fa-chevron-right" aria-hidden="true"></i></li>
         </ul>
         <table>
             <thead>
@@ -17,7 +17,7 @@
             <tbody>
                 <tr v-for="ad in currentData" :key="ad.id">
                     <td>{{ ad.id }}</td>
-                    <td><Pictures :picArray="ad.pictures"/><a :href="ad.sources[0].url">{{ ad.title }}</a></td>
+                    <td><Pictures :picArray="ad.pictures" :title="ad.title"/><a :href="ad.sources[0].url">{{ ad.title }}</a></td>
                     <td>{{ ad.locationName }}</td>
                     <td>4</td>
                 </tr>
@@ -126,5 +126,31 @@ img.table-img {
     max-width: 200px;
     max-height: 100px;
     object-fit: contain;
+}
+
+ul.paginator {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.paginator li {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    font-size: 1.4em;
+    border: 1px solid;
+    border-radius: 5px;
+    text-align: center;
+    margin: 0 1px 0 1px;
+    cursor: pointer;
+}
+
+.paginator li.current, .paginator li.disabled, .paginator li.dots {
+    cursor: initial;
+}
+
+.paginator li span, .paginator li i {
+    vertical-align: middle;
 }
 </style>
